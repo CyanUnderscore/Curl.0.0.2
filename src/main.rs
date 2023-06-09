@@ -1,61 +1,67 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use std::fs::File;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::io::Write;
 use std::path::Path;
-use curl::easy::Easy;
+use curl::{easy::Easy};
 use std::cmp::PartialEq;
-use egui::Context;
-use egui::Ui::ui;
+use eframe::egui;
+use eframe::Result as eResult;
+use curl_sys;
 
-enum simpleEnum {
-    rouge, 
-    bleu, 
-    vert,
+pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+
+pub struct Error{
+    pub code: curl_sys::CURLcode,
+    pub extra: Option<Box<str>>,
 }
-
 fn main() {
-    ui.label("This is a label");
-    ui.hyperlink("https://github.com/emilk/egui");
-    ui.text_edit_singleline(&mut "hello".to_owned());
-    if ui.button("Click me").clicked() { }
-    ui.add(egui::Slider::new(&mut 42, 0.0..=100.0));
-    ui.add(egui::DragValue::new(&mut 50));
+    //env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
-    ui.checkbox(&mut true, "Checkbox");
+    let options = eframe::NativeOptions {
+        initial_window_size: Some(egui::vec2(320.0, 240.0)),
+        ..Default::default()
+    };
 
-    #[derive(PartialEq)]
-    enum Enum { First, Second, Third }
-    ui.horizontal(|ui| {
-        ui.radio_value(&mut simpleEnum::bleu, Enum::First, "First");
-        ui.radio_value(&mut simpleEnum::rouge, Enum::Second, "Second");
-        ui.radio_value(&mut simpleEnum::vert, Enum::Third, "Third");
-    });
+    // Our application state:
+    let mut name = "exemple.png".to_owned();
+    let mut path = "/path/to/storage".to_owned();
+    let mut url = "https://site.com/image.png".to_owned();
 
-    ui.separator();
-
-    ui.collapsing("Click to see what is hidden!", |ui| {
-        ui.label("Not much, as it turns out");
-    });
-    }
-
-
-    fn ui_counter(ui: &mut egui::Ui, counter: &mut i32) {
-        // Put the buttons and label on the same row:
-        ui.horizontal(|ui| {
-            if ui.button("-").clicked() {
-                *counter -= 1;
-            }
-            ui.label(counter.to_string());
-            if ui.button("+").clicked() {
-                *counter += 1;
+    eframe::run_simple_native("Curl 0.0.2", options, move |ctx, _frame| {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.heading("The download service of your dreams");
+            ui.horizontal(|ui| {
+                let name_label = ui.label("file name :");
+                ui.text_edit_singleline(&mut name)
+                    .labelled_by(name_label.id);
+            });
+            ui.horizontal(|ui| {
+                let path_label = ui.label("file path :");
+                ui.text_edit_singleline(&mut path)
+                    .labelled_by(path_label.id);
+            });
+            ui.horizontal(|ui| {
+                let url_label = ui.label("file url  :");
+                ui.text_edit_singleline(&mut url)
+                    .labelled_by(url_label.id);
+            });
+            if ui.button("Click each year").clicked() {
+                match download(name.clone(), url.clone(), path.clone()) {
+                    Ok(()) => println!("succes"),
+                    Err(Error{code, extra}) => println!("{:?}", code),
+                }
             }
         });
+    });
 }
 
-fn download(name: String, file: String, path: String) {
+fn download(name: String, url: String, path: String) -> Result<(), Error> {
     let wanted_name = name;
-    let wanted_file = file;
+    let wanted_file = url;
     let binding = &(path.trim().to_owned() + wanted_name.trim());
     let path_name = Path::new(binding);
 
@@ -63,7 +69,7 @@ fn download(name: String, file: String, path: String) {
 
     let mut easy = Easy::new();
     println!("Fetching from: {}", &wanted_file);
-    easy.url(&wanted_file.trim()).unwrap();
+    easy.url(&wanted_file.trim());
     easy.follow_location(true).unwrap();
 
     easy.write_function(move |data| {
@@ -72,5 +78,5 @@ fn download(name: String, file: String, path: String) {
     }).unwrap();
 
     easy.perform().unwrap();
-    println!("File downloaded successfully!");
+    Ok(())
 }

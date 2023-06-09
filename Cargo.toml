@@ -7,5 +7,6 @@ edition = "2021"
 
 [dependencies]
 curl = "0.4.44"
-egui = "0.22.0"
+curl-sys = "0.4.63"
+eframe = "0.22.0"
 fs = "0.0.5"
