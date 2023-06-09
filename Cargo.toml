@@ -1,0 +1,11 @@
+[package]
+name = "Curl_0-0-2"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+curl = "0.4.44"
+egui = "0.22.0"
+fs = "0.0.5"
